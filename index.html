@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ipfs/0.29.1/index.min.js"></script>
+    <script src="buffer.js"></script>
+
+    <script type="text/javascript">
+      let ipfs, $input, $hash, $img
+
+      const config = {
+        repo: 'osliki-classi-test',
+        EXPERIMENTAL: {
+          pubsub: true,
+          relay: {
+            enabled: true,
+            hop: {
+              enabled: true,
+              //active: true
+            }
+          }
+        },
+        config: {
+          Addresses: {
+            Swarm: [
+              '/dns4/wrtc-star.discovery.libp2p.io/tcp/443/wss/p2p-webrtc-star',
+              '/dns4/ws-star.discovery.libp2p.io/tcp/443/wss/p2p-websocket-star',
+            ]
+          }
+        }
+      }
+
+      const loadImg = (hash) => {
+        $img.src = ''
+        $img.alt = 'loading'
+        ipfs.files.cat(hash).then(file => {
+          $img.src = window.URL.createObjectURL(new Blob([file], {type: 'image/*'}))
+          $img.alt = hash
+        }).catch(err => {
+          $img.src = ''
+          $img.alt = err
+        })
+      }
+
+      const onChange = (e) => {
+        const files = e.target.files
+
+        $img.src = ''
+        $img.alt = 'loading'
+        $input.value = ''
+
+        Array.from(files).forEach(file => {
+          const reader = new FileReader()
+
+          reader.onload = async (e) => {
+            const data = new buffer.Buffer(e.target.result)
+
+            ipfs.files.add(data).then(res => {
+              const hash = res[0].path
+
+              $input.value = hash
+
+              loadImg(hash)
+
+              console.log('ipfs.files.add', res)
+            })
+          }
+
+          reader.readAsArrayBuffer(file);
+        })
+      }
+
+      const onPaste = () => setTimeout(() => {
+        loadImg($input.value)
+      }, 0)
+
+      window.onload = () => {
+        ipfs = new window.Ipfs(config)
+
+        $input = document.getElementById('input')
+        $img = document.getElementById('img')
+      }
+    </script>
+  </head>
+  <body>
+    <input onchange="onChange(event);" type="file" accept="image/*" />
+    <br>
+    <br>
+    <input placeholder="paste hash" id="input" onpaste="onPaste(event);" type="text" />
+    <br>
+    <br>
+    <img id="img" src="" alt="" width="500" />
+  </body>
+</html>
